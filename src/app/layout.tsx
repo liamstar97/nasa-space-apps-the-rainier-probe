@@ -1,6 +1,8 @@
 import { Provider } from "@/components/ui/provider"
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import 'leaflet/dist/leaflet.css';
+import 'react-datepicker/dist/react-datepicker.css';
 import "./globals.css";
 
 const geistSans = Geist({

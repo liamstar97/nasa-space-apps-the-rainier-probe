@@ -1,95 +1,77 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+'use client'
+import { useState } from 'react'
+import DynamicMap from "@/components/map/DynamicMap"
+import SearchBox from "@/components/map/SearchBox"
 
 export default function Home() {
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>src/app/page.tsx</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [mapCenter, setMapCenter] = useState<[number, number]>([47.6062, -122.3321])
+  const [zoom, setZoom] = useState(13)
+  const [latestSearch, setLatestSearch] = useState<{ lat: number; lon: number; name?: string }>({
+    lat: 47.6062,
+    lon: -122.3321,
+    name: "Seattle, WA"
+  })
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+  const handleLocationSearch = async (location: string) => {
+    try {
+      // Using OpenStreetMap Nominatim API for geocoding
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}&limit=1`
+      )
+      const data = await response.json()
+      
+      if (data && data.length > 0) {
+        const { lat, lon, display_name } = data[0]
+        const newLat = parseFloat(lat)
+        const newLon = parseFloat(lon)
+        setMapCenter([newLat, newLon])
+        setLatestSearch({
+          lat: newLat,
+          lon: newLon,
+          name: display_name
+        })
+        setZoom(13)
+      } else {
+        alert('Location not found. Please try a different search term.')
+      }
+    } catch (error) {
+      console.error('Error searching for location:', error)
+      alert('Error searching for location. Please try again.')
+    }
+  }
+
+  const handleCoordinateSearch = (lat: number, lon: number) => {
+    setMapCenter([lat, lon])
+    setLatestSearch({
+      lat: lat,
+      lon: lon,
+      name: undefined // No name for coordinate searches
+    })
+    setZoom(15) // Higher zoom for precise coordinates
+  }
+
+  const handleDateChange = (date: string) => {
+    setSelectedDate(date)
+    console.log('Selected date:', date) // You can add your date logic here
+  }
+
+  return (
+    <div style={{ 
+      height: "100vh", 
+      width: "100vw", 
+      maxHeight: "100vh", 
+      maxWidth: "100vw",
+      overflow: "hidden",
+      position: "relative"
+    }}>
+      <SearchBox 
+        onLocationSearch={handleLocationSearch} 
+        onCoordinateSearch={handleCoordinateSearch}
+        latestSearch={latestSearch}
+        onDateChange={handleDateChange}
+      />
+      <DynamicMap posix={mapCenter} zoom={zoom} />
     </div>
   );
 }
