@@ -23,13 +23,16 @@ export default function Earthaccess() {
     
     try {
       const { data, errors } = await client.queries.earthaccess({
-        name: "World",
+        long: -122.3,
+        lat: 47.6,
+        date: "2025-08-01",
+        timezone: "America/Los_Angeles",
       });
 
       if (errors) {
         setError(errors.map((e: { message: string }) => e.message).join(", "));
       } else if (data) {
-        setResponseText(data);
+        setResponseText(data.toString());
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");

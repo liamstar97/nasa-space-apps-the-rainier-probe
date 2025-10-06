@@ -18,7 +18,7 @@ def pull_data(date, latitude, longitude, keep_variables=[], buffer=0.5, subset=T
     # load data
     fn = earthaccess.open(results)  # downloading the data, authentication
     print(fn)
-    ds = xr.open_mfdataset(fn, engine='h5netcdf')  # opens file(s) and combines into single xarray dataset
+    ds = xr.open_mfdataset(fn)  # opens file(s) and combines into single xarray dataset
     print("completed loading data")
     
     # subset by latitude/longitude and by variables
@@ -34,6 +34,7 @@ def pull_data(date, latitude, longitude, keep_variables=[], buffer=0.5, subset=T
 
 
 def handler(event, context):
+  print(event)
   # Testing with Seattle
   seattle_lat = 47.6
   seattle_lon = -122.3

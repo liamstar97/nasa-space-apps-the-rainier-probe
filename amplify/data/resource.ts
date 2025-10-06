@@ -20,9 +20,12 @@ const schema = a.schema({
 
   earthaccess: a.query()
     .arguments({
-      name: a.string(),
+      long: a.float(),
+      lat: a.float(),
+      date: a.date(),
+      timezone: a.string(),
     })
-    .returns(a.string())
+    .returns(a.json())
     .authorization((allow) => [allow.guest()])
     .handler(a.handler.function(earthaccessFunctionHandler)),
 });
