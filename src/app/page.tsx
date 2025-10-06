@@ -71,7 +71,7 @@ export default function Home() {
         latestSearch={latestSearch}
         onDateChange={handleDateChange}
       />
-      <DynamicMap posix={mapCenter} zoom={zoom} />
+      <DynamicMap posix={mapCenter} zoom={zoom} latestSearch={latestSearch} selectedDate={selectedDate} />
     </div>
   );
 }

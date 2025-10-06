@@ -1,9 +1,13 @@
 "use client"
 
+import React from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { LatLngExpression, LatLngTuple } from 'leaflet';
 import L from 'leaflet';
+import { useColorMode } from '@/components/ui/color-mode';
+import MapControls from './MapControls';
+import WeatherDataLayer from './WeatherDataLayer';
 
 import "leaflet/dist/leaflet.css";
 
@@ -11,7 +15,7 @@ import "leaflet/dist/leaflet.css";
 const createCustomIcon = () => {
   return L.divIcon({
     className: 'custom-marker',
-    html: '<div style="background-color: #3388ff; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+    html: '<div style="background-color: #3388ff; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white;"></div>',
     iconSize: [20, 20],
     iconAnchor: [10, 10]
   });
@@ -20,6 +24,8 @@ const createCustomIcon = () => {
 interface MapProps {
     posix: LatLngExpression | LatLngTuple,
     zoom?: number,
+    latestSearch?: { lat: number; lon: number; name?: string },
+    selectedDate?: string
 }
 
 const defaults = {
@@ -29,33 +35,87 @@ const defaults = {
 // Component to update map center when posix changes
 function MapUpdater({ posix, zoom }: { posix: LatLngExpression | LatLngTuple, zoom: number }) {
     const map = useMap()
+    const prevPosixRef = useRef<LatLngExpression | LatLngTuple | null>(null)
+    const prevZoomRef = useRef<number | null>(null)
     
     useEffect(() => {
-        map.setView(posix, zoom)
+        // Check if this is actually a new position/zoom
+        const isNewPosition = !prevPosixRef.current || 
+            (Array.isArray(posix) && Array.isArray(prevPosixRef.current) ? 
+                posix[0] !== prevPosixRef.current[0] || posix[1] !== prevPosixRef.current[1] :
+                posix.lat !== prevPosixRef.current.lat || posix.lng !== prevPosixRef.current.lng)
+        
+        const isNewZoom = prevZoomRef.current === null || Math.abs(prevZoomRef.current - zoom) > 0.1
+        
+        if (isNewPosition || isNewZoom) {
+            console.log('MapUpdater: Setting new view', { posix, zoom, isNewPosition, isNewZoom })
+            map.setView(posix, zoom)
+            prevPosixRef.current = posix
+            prevZoomRef.current = zoom
+        } else {
+            console.log('MapUpdater: Skipping view update - no change detected')
+        }
     }, [posix, zoom, map])
     
     return null
 }
 
-// Component to add custom zoom control on the right side
-function CustomZoomControl() {
+
+
+// Component to handle dynamic tile layer switching
+function DynamicTileLayer() {
     const map = useMap()
+    const { colorMode } = useColorMode()
+    const filterAppliedRef = useRef<string | null>(null)
     
     useEffect(() => {
-        const zoomControl = L.control.zoom({
-            position: 'topright'
-        })
-        map.addControl(zoomControl)
+        // Only apply CSS filter if it's different from what's already applied
+        const mapContainer = map.getContainer()
+        const newFilter = colorMode === 'dark' ? 'invert(1) hue-rotate(180deg) brightness(0.8)' : 'none'
         
-        return () => {
-            map.removeControl(zoomControl)
+        if (filterAppliedRef.current !== newFilter) {
+            console.log('DynamicTileLayer: Applying filter', { colorMode, newFilter })
+            mapContainer.style.filter = newFilter
+            filterAppliedRef.current = newFilter
+        } else {
+            console.log('DynamicTileLayer: Filter already applied, skipping')
+        }
+    }, [map, colorMode])
+    
+    // Initial tile layer setup - only run once
+    useEffect(() => {
+        // Check if tile layer already exists
+        let hasTileLayer = false
+        map.eachLayer((layer) => {
+            if (layer instanceof L.TileLayer) {
+                hasTileLayer = true
+            }
+        })
+        
+        if (!hasTileLayer) {
+            console.log('DynamicTileLayer: Adding initial tile layer')
+            // Add initial tile layer
+            const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 19,
+            })
+            
+            tileLayer.addTo(map)
+        } else {
+            console.log('DynamicTileLayer: Tile layer already exists, skipping')
         }
     }, [map])
     
     return null
 }
 
-const Map = ({ posix, zoom = defaults.zoom }: MapProps) => {
+// Wrapper component to provide map context to WeatherDataLayer
+function WeatherDataLayerWrapper({ latestSearch, selectedDate }: { latestSearch?: { lat: number; lon: number; name?: string }, selectedDate?: string }) {
+    const map = useMap()
+    return <WeatherDataLayer map={map} latestSearch={latestSearch} selectedDate={selectedDate} />
+}
+
+const Map = ({ posix, zoom = defaults.zoom, latestSearch, selectedDate }: MapProps) => {
     return (
         <MapContainer
             center={posix}
@@ -65,11 +125,9 @@ const Map = ({ posix, zoom = defaults.zoom }: MapProps) => {
             zoomControl={false}
         >
             <MapUpdater posix={posix} zoom={zoom} />
-            <CustomZoomControl />
-            <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
+            <MapControls latestSearch={latestSearch} />
+            <DynamicTileLayer />
+            <WeatherDataLayerWrapper latestSearch={latestSearch} selectedDate={selectedDate} />
             <Marker position={posix} draggable={false} icon={createCustomIcon()}>
                 <Popup>Current Location</Popup>
             </Marker>

@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { Box, Input, Button, Text } from '@chakra-ui/react'
+import { useColorMode } from '@/components/ui/color-mode'
 import DatePicker from 'react-datepicker'
 
 interface SearchBoxProps {
@@ -24,8 +25,26 @@ export default function SearchBox({ onLocationSearch, onCoordinateSearch, latest
   const [latitude, setLatitude] = useState('')
   const [longitude, setLongitude] = useState('')
   const [selectedDate, setSelectedDate] = useState(new Date())
+  const [hasBeenSearched, setHasBeenSearched] = useState(false)
+  const [lastSearchedTerm, setLastSearchedTerm] = useState('')
+  const [isClient, setIsClient] = useState(false)
+  const { colorMode } = useColorMode()
   const inputRef = useRef<HTMLInputElement>(null)
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Set client-side flag after hydration
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  // Apply dark class to body for CSS selectors
+  useEffect(() => {
+    if (colorMode === 'dark') {
+      document.body.classList.add('dark')
+    } else {
+      document.body.classList.remove('dark')
+    }
+  }, [colorMode])
 
   // Debounced search for suggestions
   useEffect(() => {
@@ -64,7 +83,10 @@ export default function SearchBox({ onLocationSearch, onCoordinateSearch, latest
     if (searchLocation) {
       onLocationSearch(searchLocation)
       setShowSuggestions(false)
-      setSearchTerm('')
+      // Keep the search term in the input to show what was searched
+      setSearchTerm(searchLocation)
+      setLastSearchedTerm(searchLocation)
+      setHasBeenSearched(true)
     }
   }
 
@@ -90,14 +112,33 @@ export default function SearchBox({ onLocationSearch, onCoordinateSearch, latest
   }
 
   const handleSuggestionClick = (suggestion: Suggestion) => {
+    // Auto-populate coordinates when location is selected
+    setLatitude(suggestion.lat)
+    setLongitude(suggestion.lon)
     handleSearch(suggestion.display_name)
   }
 
-  const handleCoordinateSearch = () => {
+  const handleCoordinateSearch = async () => {
     const lat = parseFloat(latitude)
     const lon = parseFloat(longitude)
     
     if (!isNaN(lat) && !isNaN(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+      try {
+        // Reverse geocoding to get location name
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`
+        )
+        const data = await response.json()
+        
+        // Auto-populate location search field with the found name
+        if (data && data.display_name) {
+          setSearchTerm(data.display_name)
+        }
+      } catch (error) {
+        console.error('Error reverse geocoding:', error)
+        // Still proceed with coordinate search even if reverse geocoding fails
+      }
+      
       onCoordinateSearch(lat, lon)
       setLatitude('')
       setLongitude('')
@@ -122,22 +163,39 @@ export default function SearchBox({ onLocationSearch, onCoordinateSearch, latest
   }
 
   return (
-    <Box position="absolute" top="10px" left="10px" zIndex={1000} bg="white" p={3} borderRadius="md" boxShadow="lg" minW="300px">
+    <Box position="absolute" top="10px" left="10px" zIndex={1000} bg="bg" p={3} borderRadius="md" minW="300px" border="3px solid" borderColor="#3388ff">
       {/* Location Search */}
       <Box display="flex" gap={2} mb={3}>
         <Box position="relative" flex="1">
-          <Input
-            ref={inputRef}
-            placeholder="Search for a location..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onKeyPress={handleKeyPress}
-            onKeyDown={handleKeyPress}
-            onFocus={() => setShowSuggestions(suggestions.length > 0)}
-            size="sm"
-            color="black"
-            _placeholder={{ color: "gray.500" }}
-          />
+                <Input
+                  ref={inputRef}
+                  placeholder="Search for a location..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  onKeyDown={handleKeyPress}
+                  onFocus={() => {
+                    // Clear the search bar if it has been searched before
+                    if (hasBeenSearched) {
+                      setSearchTerm('')
+                      setHasBeenSearched(false)
+                    }
+                    setShowSuggestions(suggestions.length > 0)
+                  }}
+                  onBlur={() => {
+                    // Delay to allow click events on suggestions to fire first
+                    setTimeout(() => {
+                      // If user focused but didn't search, restore the last searched term
+                      if (!hasBeenSearched && lastSearchedTerm && !searchTerm.trim()) {
+                        setSearchTerm(lastSearchedTerm)
+                      }
+                      setShowSuggestions(false)
+                    }, 150)
+                  }}
+                  size="sm"
+                  color="fg"
+                  _placeholder={{ color: "fg.muted" }}
+                />
           
           {showSuggestions && suggestions.length > 0 && (
             <Box
@@ -145,9 +203,9 @@ export default function SearchBox({ onLocationSearch, onCoordinateSearch, latest
               top="100%"
               left="0"
               right="0"
-              bg="white"
+              bg="bg"
               border="1px solid"
-              borderColor="gray.200"
+              borderColor="border"
               borderRadius="md"
               boxShadow="lg"
               maxH="200px"
@@ -159,13 +217,13 @@ export default function SearchBox({ onLocationSearch, onCoordinateSearch, latest
                   key={index}
                   p={2}
                   cursor="pointer"
-                  bg={index === selectedIndex ? "blue.50" : "white"}
-                  _hover={{ bg: "gray.50" }}
+                  bg={index === selectedIndex ? "accent" : "bg"}
+                  _hover={{ bg: "bg.muted" }}
                   onClick={() => handleSuggestionClick(suggestion)}
                   borderBottom={index < suggestions.length - 1 ? "1px solid" : "none"}
-                  borderColor="gray.100"
+                  borderColor="border"
                 >
-                  <Text fontSize="sm" color="black" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+                  <Text fontSize="sm" color="fg" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
                     {suggestion.display_name}
                   </Text>
                 </Box>
@@ -181,7 +239,6 @@ export default function SearchBox({ onLocationSearch, onCoordinateSearch, latest
 
       {/* Coordinate Search */}
       <Box>
-        <Text fontSize="xs" color="gray.600" mb={1}>Or enter coordinates:</Text>
         <Box display="flex" gap={2} alignItems="center">
           <Input
             placeholder="Latitude"
@@ -189,8 +246,8 @@ export default function SearchBox({ onLocationSearch, onCoordinateSearch, latest
             onChange={(e) => setLatitude(e.target.value)}
             onKeyPress={handleCoordinateKeyPress}
             size="sm"
-            color="black"
-            _placeholder={{ color: "gray.500" }}
+            color="fg"
+            _placeholder={{ color: "fg.muted" }}
             type="number"
             step="any"
           />
@@ -200,8 +257,8 @@ export default function SearchBox({ onLocationSearch, onCoordinateSearch, latest
             onChange={(e) => setLongitude(e.target.value)}
             onKeyPress={handleCoordinateKeyPress}
             size="sm"
-            color="black"
-            _placeholder={{ color: "gray.500" }}
+            color="fg"
+            _placeholder={{ color: "fg.muted" }}
             type="number"
             step="any"
           />
@@ -214,40 +271,26 @@ export default function SearchBox({ onLocationSearch, onCoordinateSearch, latest
 
       {/* Date Picker */}
       <Box mb={3}>
-        <Text fontSize="xs" color="gray.600" mb={1}>Select Date:</Text>
         <DatePicker
           selected={selectedDate}
           onChange={handleDateChange}
           dateFormat="yyyy-MM-dd"
           showPopperArrow={false}
           popperPlacement="bottom-start"
+          wrapperClassName={"date-picker-wrapper " + (isClient && colorMode === 'dark' ? 'dark' : '')}
           customInput={
             <Input
               size="sm"
-              color="black"
-              cursor="pointer"
-              _hover={{ borderColor: "blue.300" }}
-              _focus={{ borderColor: "blue.500", boxShadow: "0 0 0 1px #3182ce" }}
+                    color="fg"
+                    cursor="pointer"
+                    _hover={{ borderColor: "accent" }}
+                    _focus={{ borderColor: "accent", boxShadow: "0 0 0 1px var(--chakra-colors-accent)" }}
               readOnly
             />
           }
         />
       </Box>
 
-      {/* Latest Search Display */}
-      {latestSearch && (
-        <Box mt={3} p={2} bg="gray.50" borderRadius="md" border="1px solid" borderColor="gray.200">
-          <Text fontSize="xs" color="gray.600" mb={1}>Latest Search:</Text>
-          {latestSearch.name && (
-            <Text fontSize="sm" fontWeight="bold" color="black" mb={1}>
-              {latestSearch.name}
-            </Text>
-          )}
-          <Text fontSize="xs" color="gray.700">
-            <strong>Lat:</strong> {latestSearch.lat.toFixed(6)} | <strong>Lon:</strong> {latestSearch.lon.toFixed(6)}
-          </Text>
-        </Box>
-      )}
     </Box>
   )
 }
