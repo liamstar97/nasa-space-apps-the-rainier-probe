@@ -27,8 +27,8 @@ export const earthaccessFunctionHandler = defineFunction(
         platform: Platform.LINUX_AMD64,
       }),
       architecture: Architecture.X86_64,
-      memorySize: 2048,
-      timeout: Duration.seconds(120),
+      memorySize: 4096,
+      timeout: Duration.seconds(240),
       environment: {
         EARTHDATA_USERNAME: usernameSecret.secretValue.unsafeUnwrap(),
         EARTHDATA_PASSWORD: passwordSecret.secretValue.unsafeUnwrap(),
