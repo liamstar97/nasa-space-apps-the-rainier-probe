@@ -33,9 +33,6 @@ def pull_data(date, latitude, longitude, keep_variables=[], buffer=0.5, subset=T
 
 
 def handler(event, context):
-  print(os.getenv('EARTHDATA_USERNAME'))
-  print(os.getenv('EARTHDATA_PASSWORD'))
-
   # Testing with Seattle
   seattle_lat = 47.6
   seattle_lon = -122.3
