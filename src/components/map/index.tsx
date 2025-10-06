@@ -38,22 +38,44 @@ function MapUpdater({ posix, zoom }: { posix: LatLngExpression | LatLngTuple, zo
     const prevPosixRef = useRef<LatLngExpression | LatLngTuple | null>(null)
     const prevZoomRef = useRef<number | null>(null)
     
+    // Helper function to normalize LatLngExpression or LatLngTuple to an object with lat/lng
+    const getNormalizedCoords = (location: LatLngExpression | LatLngTuple | null) => {
+        if (!location) {
+            return { lat: NaN, lng: NaN };
+        }
+        if (Array.isArray(location)) {
+            return { lat: location[0], lng: location[1] };
+        }
+        return location as { lat: number; lng: number };
+    };
+
     useEffect(() => {
-        // Check if this is actually a new position/zoom
-        const isNewPosition = !prevPosixRef.current || 
-            (Array.isArray(posix) && Array.isArray(prevPosixRef.current) ? 
-                posix[0] !== prevPosixRef.current[0] || posix[1] !== prevPosixRef.current[1] :
-                posix.lat !== prevPosixRef.current.lat || posix.lng !== prevPosixRef.current.lng)
-        
-        const isNewZoom = prevZoomRef.current === null || Math.abs(prevZoomRef.current - zoom) > 0.1
-        
+        // On initial render, prevPosixRef.current will be null.
+        // We set the initial view and store the current posix/zoom.
+        if (prevPosixRef.current === null) {
+            map.setView(posix, zoom);
+            prevPosixRef.current = posix;
+            prevZoomRef.current = zoom;
+            console.log('MapUpdater: Initializing view', { posix, zoom });
+            return;
+        }
+
+        // Compare current position with the previous one
+        const currentCoords = getNormalizedCoords(posix);
+        const prevCoords = getNormalizedCoords(prevPosixRef.current);
+
+        const isNewPosition = currentCoords.lat !== prevCoords.lat || currentCoords.lng !== prevCoords.lng;
+
+        // Compare current zoom with the previous one
+        const isNewZoom = Math.abs(prevZoomRef.current! - zoom) > 0.1;
+
         if (isNewPosition || isNewZoom) {
-            console.log('MapUpdater: Setting new view', { posix, zoom, isNewPosition, isNewZoom })
-            map.setView(posix, zoom)
-            prevPosixRef.current = posix
-            prevZoomRef.current = zoom
+            console.log('MapUpdater: Setting new view', { posix, zoom, isNewPosition, isNewZoom });
+            map.setView(posix, zoom);
+            prevPosixRef.current = posix;
+            prevZoomRef.current = zoom;
         } else {
-            console.log('MapUpdater: Skipping view update - no change detected')
+            console.log('MapUpdater: Skipping view update - no change detected');
         }
     }, [posix, zoom, map])
     
