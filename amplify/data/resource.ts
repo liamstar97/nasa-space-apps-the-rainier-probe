@@ -9,6 +9,22 @@ specifies that any unauthenticated user can "create", "read", "update",
 and "delete" any "Todo" records.
 =========================================================================*/
 const schema = a.schema({
+  // DynamoDB table to store long-running job results
+  EarthAccessJob: a.model({
+    jobId: a.id().required(),
+    status: a.string().required(), // 'pending', 'processing', 'completed', 'failed'
+    lat: a.float().required(),
+    long: a.float().required(),
+    date: a.string().required(),
+    timezone: a.string().required(),
+    result: a.json(),
+    error: a.string(),
+    createdAt: a.datetime(),
+    completedAt: a.datetime(),
+  })
+  .identifier(['jobId'])
+  .authorization((allow) => [allow.guest()]),
+
   sayHello: a
     .query()
     .arguments({
@@ -20,10 +36,31 @@ const schema = a.schema({
 
   earthaccess: a.query()
     .arguments({
-      long: a.float(),
       lat: a.float(),
+      long: a.float(),
       date: a.date(),
       timezone: a.string(),
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.guest()])
+    .handler(a.handler.function(earthaccessFunctionHandler)),
+
+  // New async query - returns immediately with job ID
+  startEarthAccessJob: a.query()
+    .arguments({
+      lat: a.float(),
+      long: a.float(),
+      date: a.date(),
+      timezone: a.string(),
+    })
+    .returns(a.string()) // Returns job ID
+    .authorization((allow) => [allow.guest()])
+    .handler(a.handler.function(earthaccessFunctionHandler)),
+
+  // Query to check job status
+  getEarthAccessJobStatus: a.query()
+    .arguments({
+      jobId: a.string(),
     })
     .returns(a.json())
     .authorization((allow) => [allow.guest()])

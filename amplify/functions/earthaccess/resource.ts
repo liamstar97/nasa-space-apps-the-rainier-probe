@@ -32,15 +32,18 @@ export const earthaccessFunctionHandler = defineFunction(
       environment: {
         EARTHDATA_USERNAME: usernameSecret.secretValue.unsafeUnwrap(),
         EARTHDATA_PASSWORD: passwordSecret.secretValue.unsafeUnwrap(),
+        // DYNAMODB_TABLE_NAME will be set in backend.ts
       },
     });
 
     usernameSecret.grantRead(fn);
     passwordSecret.grantRead(fn);
+    
+    // Self-invoke permission will be added in backend.ts to avoid circular dependency
 
     return fn;
   },
   {
-    resourceGroupName: "auth" // Optional: Groups this function with auth resource
+    resourceGroupName: "data" // Assigned to data stack since it's used as a data resolver
   }
 );
