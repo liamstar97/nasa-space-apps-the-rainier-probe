@@ -12,6 +12,7 @@ export default function Home() {
     name: "Seattle, WA"
   })
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [showWeatherData, setShowWeatherData] = useState(false)
 
   const handleLocationSearch = async (location: string) => {
     try {
@@ -56,6 +57,10 @@ export default function Home() {
     console.log('Selected date:', date) // You can add your date logic here
   }
 
+  const handleShowWeatherData = () => {
+    setShowWeatherData(!showWeatherData)
+  }
+
   return (
     <div style={{ 
       height: "100vh", 
@@ -70,8 +75,16 @@ export default function Home() {
         onCoordinateSearch={handleCoordinateSearch}
         latestSearch={latestSearch}
         onDateChange={handleDateChange}
+        onShowWeatherData={handleShowWeatherData}
+        showWeatherData={showWeatherData}
       />
-      <DynamicMap posix={mapCenter} zoom={zoom} latestSearch={latestSearch} selectedDate={selectedDate} />
+      <DynamicMap 
+        posix={mapCenter} 
+        zoom={zoom} 
+        latestSearch={latestSearch} 
+        selectedDate={selectedDate}
+        showWeatherData={showWeatherData}
+      />
     </div>
   );
 }

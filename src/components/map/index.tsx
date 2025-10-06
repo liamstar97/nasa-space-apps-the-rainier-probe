@@ -25,7 +25,8 @@ interface MapProps {
     posix: LatLngExpression | LatLngTuple,
     zoom?: number,
     latestSearch?: { lat: number; lon: number; name?: string },
-    selectedDate?: string
+    selectedDate?: string,
+    showWeatherData?: boolean
 }
 
 const defaults = {
@@ -132,12 +133,12 @@ function DynamicTileLayer() {
 }
 
 // Wrapper component to provide map context to WeatherDataLayer
-function WeatherDataLayerWrapper({ latestSearch, selectedDate }: { latestSearch?: { lat: number; lon: number; name?: string }, selectedDate?: string }) {
+function WeatherDataLayerWrapper({ latestSearch, selectedDate, showWeatherData }: { latestSearch?: { lat: number; lon: number; name?: string }, selectedDate?: string, showWeatherData?: boolean }) {
     const map = useMap()
-    return <WeatherDataLayer map={map} latestSearch={latestSearch} selectedDate={selectedDate} />
+    return <WeatherDataLayer map={map} latestSearch={latestSearch} selectedDate={selectedDate} showWeatherData={showWeatherData} />
 }
 
-const Map = ({ posix, zoom = defaults.zoom, latestSearch, selectedDate }: MapProps) => {
+const Map = ({ posix, zoom = defaults.zoom, latestSearch, selectedDate, showWeatherData }: MapProps) => {
     return (
         <MapContainer
             center={posix}
@@ -149,7 +150,7 @@ const Map = ({ posix, zoom = defaults.zoom, latestSearch, selectedDate }: MapPro
             <MapUpdater posix={posix} zoom={zoom} />
             <MapControls latestSearch={latestSearch} />
             <DynamicTileLayer />
-            <WeatherDataLayerWrapper latestSearch={latestSearch} selectedDate={selectedDate} />
+            <WeatherDataLayerWrapper latestSearch={latestSearch} selectedDate={selectedDate} showWeatherData={showWeatherData} />
             <Marker position={posix} draggable={false} icon={createCustomIcon()}>
                 <Popup>Current Location</Popup>
             </Marker>
