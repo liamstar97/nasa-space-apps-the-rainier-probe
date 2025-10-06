@@ -9,6 +9,8 @@ interface SearchBoxProps {
   onCoordinateSearch: (lat: number, lon: number) => void
   latestSearch?: { lat: number; lon: number; name?: string }
   onDateChange?: (date: string) => void
+  onShowWeatherData?: () => void
+  showWeatherData?: boolean
 }
 
 interface Suggestion {
@@ -17,7 +19,7 @@ interface Suggestion {
   lon: string
 }
 
-export default function SearchBox({ onLocationSearch, onCoordinateSearch, latestSearch, onDateChange }: SearchBoxProps) {
+export default function SearchBox({ onLocationSearch, onCoordinateSearch, latestSearch, onDateChange, onShowWeatherData, showWeatherData }: SearchBoxProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -270,7 +272,7 @@ export default function SearchBox({ onLocationSearch, onCoordinateSearch, latest
 
 
       {/* Date Picker */}
-      <Box mb={3}>
+      <Box mb={3} display="flex" gap={2} alignItems="center">
         <DatePicker
           selected={selectedDate}
           onChange={handleDateChange}
@@ -289,6 +291,9 @@ export default function SearchBox({ onLocationSearch, onCoordinateSearch, latest
             />
           }
         />
+        <Button size="sm" colorScheme="purple" onClick={onShowWeatherData} minW="140px">
+          {showWeatherData ? "Hide Weather Data" : "Get Weather Data"}
+        </Button>
       </Box>
 
     </Box>
